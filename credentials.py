@@ -4,16 +4,10 @@ import googleapiclient.discovery
 import googleapiclient.errors
 import youtube_dl
 import pickle
+import webbrowser
 
 class Spotify:
     def __init__(self):
-
-        # URIs
-        self.auth_uri = r"https://accounts.spotify.com/authorize"
-        self.base_uri = r"https://api.spotify.com/v1/"
-        self.token_uri = r"https://accounts.spotify.com/api/token"
-        self.redirect_uri = os.environ.get('REDIRECT_URI')
-
         # Client Properties
         self.access_token = os.environ.get('SPOTIFY_ACCESS_TOKEN')
         self.client_id = os.environ.get('SPOTIFY_CLIENT_ID')
@@ -27,44 +21,43 @@ class Spotify:
         self.auth_str_64 = base64.urlsafe_b64encode('{}:{}'.format(self.client_id, self.client_secret).encode()).decode()
         self.headers = {'Authorization': 'Basic {0}'.format(self.auth_str_64)}
 
-        # Parameters and request bodies
-        self.auth_params = {
-            'client_id': self.client_id,
-            'response_type': 'code',
-            'redirect_uri': self.redirect_uri,
-            'scope': self.scope,
-            'state': self.state
-        }
-        self.access_token_post_body = {
+        # URIs
+        self.base_uri = r"https://api.spotify.com/v1/"
+        self.token_uri = r"https://accounts.spotify.com/api/token"
+        self.redirect_uri = os.environ.get('REDIRECT_URI')
+        self.auth_uri = r'https://accounts.spotify.com/authorize' + '?client_id=' + self.client_id + '&response_type=code&redirect_uri=' + self.redirect_uri + '&scope=user-read-private&state=' + self.state
+
+    # Gets access and refresh tokens, updates them
+    def Get_Tokens(self):
+        # if tokens expire, get auth code
+        webbrowser.open(self.auth_uri, autoraise=True)
+
+        self.code = input("Enter the code you receive here: ")
+        access_token_post_body = {
             'code': self.code,
             'grant_type': 'authorization_code',
             'redirect_uri': self.redirect_uri
                             }
-        self.refresh_token_post_body = {
+
+        request = requests.post(self.token_uri, data=access_token_post_body, headers=self.headers)
+        response = json.loads(request.text)
+
+        self.refresh_token = response['refresh_token']
+        self.access_token = response['access_token']
+
+    # Updates access token using refresh token
+    def Update_Access_Token(self):
+        refresh_token_post_body = {
             'grant_type': 'refresh_token',
             'refresh_token': self.refresh_token
                             }
 
-    # Gives user authorization, used to get access and refresh tokens
-    def Get_Authorization(self):
-        get_authorization = requests.get(url=self.auth_uri, params=self.auth_params)
-        #response_data = json.loads(get_authorization.text)
-
-    # Gets access and refresh tokens, updates them
-    def Get_Tokens(self):
-        response = requests.post(self.token_uri, data=self.access_token_post_body, headers=self.headers)
-        stuff = json.loads(response.text)
-        self.refresh_token = stuff['refresh_token']
-        self.access_token = stuff['access_token']
-
-    # Updates access token using refresh token
-    def Update_Access_Token(self):
-        response = requests.post(self.token_uri, data=self.refresh_token_post_body, headers=self.headers)
-        response_data = json.loads(response.text)
-        print(response_data)
+        request = requests.post(self.token_uri, data=refresh_token_post_body, headers=self.headers)
+        response_data = json.loads(request.text)
+        self.access_token = response_data['access_token']
 
     def Test(self):
-        playlist = 	r"https://api.spotify.com/v1/users/"
+        playlist = 	r'https://api.spotify.com/v1/users/'
         headers = {'Authorization': 'Bearer ' + self.access_token}
         f = requests.get(playlist, headers=headers)
         print(f.text)
@@ -93,7 +86,6 @@ class Youtube:
 
     # Gets client information in order to log into Youtube
     def Get_Client(self):
-        print(self.credentials)
         if (os.path.isfile(self.credentials)):
             creds = pickle.load(open(self.credentials, "rb"))
 
@@ -121,22 +113,29 @@ class Youtube:
         request = self.client.playlistItems().list(part="snippet,contentDetails", maxResults=25, playlistId=playlist_id)
         response = request.execute()
 
-        print(json.dumps(response, indent=4, sort_keys=True))
+        list_of_songs = []
 
         for video in response['items']:
-            title = video['snippet']['title']
             url = "https://www.youtube.com/watch?v=" + video['contentDetails']['videoId']
 
-            print(url)
+            video_to_song = youtube_dl.YoutubeDL({}).extract_info(url, download=False)
+            # print(json.dumps(song, indent=4, sort_keys=True))
+            song_info = {
+                'song': video_to_song['track'],
+                'artist': video_to_song['artist'],
+                'url': url
+            }
 
-            song = youtube_dl.YoutubeDL({}).extract_info(url, download=False)
+            list_of_songs.append(song_info)
 
-            print(song['track'])
+        for song in list_of_songs:
+            print(song['song'])
+            print(song['artist'])
+            print(song['url'])
 
-# A = Spotify_Authentication()
-# A.Get_Authorization()
-# A.Get_Tokens()
-# A.Update_Access_Token()
-# A.Test()
-x = Youtube()
-x.Get_Liked_Videos()
+A = Spotify()
+A.Get_Tokens()
+A.Update_Access_Token()
+A.Test()
+# x = Youtube()
+# x.Get_Liked_Videos()

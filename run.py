@@ -5,10 +5,10 @@ app = Flask(__name__)
 @app.route('/')
 
 def index():
-    return "test"
+    return "<h1>Copy and paste this string into your env. variable</h1>" + request.args.get('code')
 
 def post_req():
-    requests.post(access_token_url)
+    pass
 
 if (__name__ == "__main__"):
     app.run()
