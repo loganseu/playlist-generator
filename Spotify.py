@@ -14,10 +14,6 @@ class Spotify(object):
         self.auth_str_64 = base64.urlsafe_b64encode("{}:{}".format(self.json_data["spotify"]["client_id"],
                                                                    self.json_data["spotify"]["client_secret"]).encode()).decode()
         self.token_header = {"Authorization": "Basic {}".format(self.auth_str_64)}
-        self.request_header = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer {}".format(self.json_data["spotify"]["access_token"])
-        }
 
         # URIs
         self.token_uri = "{}{}".format(self.json_data["spotify"]["account_uri"], "api/token")
@@ -77,7 +73,11 @@ class Spotify(object):
         }
 
         uri = self.json_data["spotify"]["api_uri"] + "recommendations"
-        request = requests.get(uri, params=request_body, headers=self.request_header)
+        request_header = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {}".format(self.json_data["spotify"]["access_token"])
+        }
+        request = requests.get(uri, params=request_body, headers=request_header)
 
         response = request.json()
         for song in response["tracks"]:
@@ -89,7 +89,11 @@ class Spotify(object):
 
     def create_playlist(self):
         query_string = "{}users/{}/playlists".format(self.json_data["spotify"]["api_uri"], self.json_data["spotify"]["user_id"])
-        request = requests.get(query_string, headers=self.request_header)
+        request_header = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {}".format(self.json_data["spotify"]["access_token"])
+        }
+        request = requests.get(query_string, headers=request_header)
         response = request.json()
 
         for item in response["items"]:
@@ -97,7 +101,7 @@ class Spotify(object):
                 return item
 
         request_body = json.dumps({"name": "Generated Playlist", "description": "Generated Playlist", "public": True})
-        request = requests.post(query_string, data=request_body, headers=self.request_header)
+        request = requests.post(query_string, data=request_body, headers=request_header)
         response = request.json()
 
         return response
@@ -110,7 +114,11 @@ class Spotify(object):
         song_uris = [info["spotify_uri"] for song, info in self.songs_to_add.items()]
         request_body = json.dumps(song_uris)
         query = "{}playlists/{}/tracks".format(self.json_data["spotify"]["api_uri"], self.create_playlist()["id"])
-        requests.post(query, data=request_body, headers=self.request_header)
+        request_header = {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer {}".format(self.json_data["spotify"]["access_token"])
+        }
+        requests.post(query, data=request_body, headers=request_header)
 
     def number_of_songs_added(self):
         return len(self.songs_to_add)

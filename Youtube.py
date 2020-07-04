@@ -33,6 +33,7 @@ class Youtube(object):
             client_id=self.json_data["installed"]["client_id"],
             client_secret=self.json_data["installed"]["client_secret"],
             refresh_token=self.json_data["installed"]["refresh_token"],
+            scopes=scope,
             token_expiry=self.json_data["installed"]["token_expiry"],
             token_uri=GOOGLE_TOKEN_URI,
             user_agent=None,
